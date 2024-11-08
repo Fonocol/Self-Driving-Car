@@ -30,6 +30,39 @@ FPS = 60
 # Initialisation de la collecte de données
 data_collection = []
 
+
+# Charger l'image de l'objet collectable
+COLLECTABLE_IMG = scale_img(pygame.image.load('./imgs/femme.png'), 0.08)
+
+
+class Collectable:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.attached = False  
+
+    def draw(self, win):
+        win.blit(COLLECTABLE_IMG, (int(self.x), int(self.y)))
+
+    def attach_to_car(self, destination, car):
+        distance = math.sqrt((self.x - car.x) ** 2 + (self.y - car.y) ** 2)
+        distance_to_destination = math.sqrt((self.x - destination[0]) ** 2 + (self.y - destination[1]) ** 2)
+        if distance < 20 and distance_to_destination>20:
+            self.attached = True
+
+    def update_position(self, car):
+        if self.attached:
+            self.x, self.y = car.x, car.y
+
+    def detach_at_destination(self, destination,car):
+        distance_to_destination = math.sqrt((self.x - destination[0]) ** 2 + (self.y - destination[1]) ** 2)
+        distance = math.sqrt((self.x - car.x) ** 2 + (self.y - car.y) ** 2)
+        if distance_to_destination < 20 and distance < 20: 
+            self.attached = False
+
+
+
+
 class Car:
     def __init__(self, max_vel, rotation_vel):
         self.img = self.IMG
@@ -289,24 +322,53 @@ clock = pygame.time.Clock()
 images = [(TRACK, (0, 0)),(FINISH, FINISH_POSITION),  (TRACK_BORDER, (0, 0))] #
 player_car = PlayerCar(4, 4)
 
+#while run:
+    #clock.tick(FPS)
+    #draw(WIN, images, player_car)
+    
+    #player_car.is_collision()
+    #action = move_player(player_car)
+    
+    #if action:
+        #print(player_car.x,player_car.y)
+        #collect_data(player_car, action)
+
+    #for event in pygame.event.get():
+        #if event.type == pygame.QUIT:
+            #run = False
+            #break
+
+#pygame.quit()
+
+
+collectable = Collectable(701, 325)  # Position initiale de l'objet 
+
 while run:
     clock.tick(FPS)
+    
+    # Affiche l'arrière-plan et autres images
     draw(WIN, images, player_car)
     
-    player_car.is_collision()
-    action = move_player(player_car)
     
-    if action:
-        print(player_car.x,player_car.y)
-        collect_data(player_car, action)
+    collectable.draw(WIN)
+    collectable.attach_to_car(FINISH_POSITION,player_car)  # Attache si proche
+    collectable.update_position(player_car)  # Suivre la voiture si collecté
+    collectable.detach_at_destination(FINISH_POSITION,player_car)  # Détache si à la destination
 
+    # Gère les actions du joueur
+    action = move_player(player_car)
+    if action:
+        collect_data(player_car, action)
+    
+   
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
             break
 
-pygame.quit()
+    pygame.display.update() 
 
+pygame.quit()
 
 save = int(input("Save data? Entre 1: save = "))
 if save == 1:
