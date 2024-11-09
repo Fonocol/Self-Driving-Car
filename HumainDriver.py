@@ -8,12 +8,14 @@ import csv  # Import pour la sauvegarde des données
 pygame.init()
 font = pygame.font.SysFont(None, 24)
 
-TRACK = pygame.image.load('./imgs/map.jpg')
-TRACK_BORDER = pygame.image.load('./imgs/masck.png')
+TRACK = scale_img(pygame.image.load('./imgs/map.png'), 0.55)
+TOITURE = scale_img(pygame.image.load('./imgs/toiture.png'), 0.55)
+PLANTES = scale_img(pygame.image.load('./imgs/plantes.png'), 0.55)
+TRACK_BORDER = scale_img(pygame.image.load('./imgs/masck.png'), 0.55)
 TRACK_BORDER_MASK = pygame.mask.from_surface(TRACK_BORDER)
 FINISH = pygame.image.load('./imgs/finish.png')
 FINISH_MASK = pygame.mask.from_surface(FINISH)
-FINISH_POSITION = (120,213)
+FINISH_POSITION = (317, 501)
 
 RED_CAR = scale_img(pygame.image.load('./imgs/red-car.png'), 0.55)
 WIDTH, HEIGHT = TRACK.get_width(), TRACK.get_height()
@@ -68,7 +70,7 @@ class Car:
         self.img = self.IMG
         self.max_vel = max_vel
         self.vel = 0
-        self.angle = 0
+        self.angle = -90
         self.rotation_vel = rotation_vel
         self.x, self.y = self.START_POS
         self.acceleration = 0.1
@@ -235,7 +237,7 @@ class Car:
     
       # la distance à l'obstacle
       x, y, dist = self.x, self.y, 0
-      while 0 <= int(x) < WIDTH and 0 <= int(y) < HEIGHT:
+      while 10 <= int(x) < WIDTH-10 and 10 <= int(y) < HEIGHT-10:
         x += dx
         y += dy
         dist += 1
@@ -250,19 +252,20 @@ class Car:
 
 class PlayerCar(Car):
     IMG = RED_CAR
-    START_POS = (130, 160)
+    START_POS = (480, 514)
 
 
 
 def collect_data(player_car, action):
     state = player_car.get_state()
+    print(state)
     front_dist, back_dist, left_dist, right_dist,left_font_dist,right_font_dist,left_back_dist,right__back_dist, angle, speed, collision, finish_dist = state
 
     data_collection.append({
         'x': player_car.x,
         'y': player_car.y,
-        'speed': player_car.vel,
-        'angle': player_car.angle,
+        'speed': speed,
+        'angle': angle,
         'front_dist': front_dist,
         'back_dist': back_dist,
         'left_dist': left_dist,
@@ -292,6 +295,8 @@ def draw(win, images, player_car):
     for img, pos in images:
         win.blit(img, pos)
     player_car.draw(win)
+    win.blit(TOITURE, (0,0))
+    win.blit(PLANTES, (0,0))
     pygame.display.update()
 
 def move_player(player_car):
@@ -319,7 +324,7 @@ def move_player(player_car):
 
 run = True
 clock = pygame.time.Clock()
-images = [(TRACK, (0, 0)),(FINISH, FINISH_POSITION),  (TRACK_BORDER, (0, 0))] #
+images = [(TRACK, (0, 0)),(FINISH, FINISH_POSITION)] #,  (TRACK_BORDER, (0, 0))
 player_car = PlayerCar(4, 4)
 
 #while run:
@@ -357,6 +362,7 @@ while run:
 
     # Gère les actions du joueur
     action = move_player(player_car)
+    print(player_car.x,player_car.y)
     if action:
         collect_data(player_car, action)
     
