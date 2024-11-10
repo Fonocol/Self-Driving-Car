@@ -2,9 +2,11 @@ import pygame
 import time
 import math
 from utils import scale_img,blit_rotate_center
+from Collection import Collectable
 import random
 from enum import Enum
 import numpy as np
+
 
 import pickle
 import os
@@ -37,6 +39,9 @@ BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0)
 BLANC =(255, 255, 255)
 
+HUMAIN_POSITION = [(475, 518), (585, 515), (700, 513), (797, 502), (823, 457), (828, 387), (778, 340), (778, 340), (692, 376), (605, 435), (532, 384), (543, 313), (540, 239), (559, 183), (616, 190), (640, 247), (688, 286), (753, 251), (811, 199), (832, 124), (818, 76), (761, 43), (705, 62), (662, 92), (610, 109), (568, 90), (531, 50), (476, 38), (447, 80), (379, 108), (435, 137), (445, 202), (468, 271), (474, 340), (440, 380), (367, 369), (326, 280), (300, 194), (309, 134), (326, 74), (306, 34), (213, 28), (107, 37), (53, 62), (53, 123), (65, 164), (133, 215), (203, 247), (253, 294), (283, 354), (277, 411), (217, 451), (176, 412), (144, 332), (99, 273), (51, 309), (50, 381), (53, 446), (82, 507), (189, 521)]
+
+
 FPS = 25
 images = [(TRACK,(0,0)),(FINISH,FINISH_POSITION)] #,(TRACK_BORDER,(0,0))
 
@@ -51,7 +56,10 @@ class Car:
     self.x, self.y = self.START_POS
     self.acceleration = 0.1
     self.score = 0
+    self.time = 0
     self.clock = pygame.time.Clock()
+    self.client = None
+    self._place_client()
     
 
   def rotate(self,left=False,right=False):
@@ -62,6 +70,7 @@ class Car:
 
   def draw(self,win):
     blit_rotate_center(win,self.img,(self.x,self.y),self.angle)
+    self.client.draw(win)
 
   def move_forward(self):
     self.vel = min(self.vel + self.acceleration,self.max_vel)
@@ -99,11 +108,19 @@ class Car:
     self.angle = 0
     self.vel = 0
     self.score = 0
+    self.time = 0
+    self.client = None
+    self._place_client()
+
+  def _place_client(self):
+        i = random.randint(0, len(HUMAIN_POSITION)-1)
+        x,y = HUMAIN_POSITION[i]
+        self.client = Collectable(x, y)
   
 
 class CarAI(Car):
   IMG = GREEN_CAR
-  START_POS = (483, 513)
+  START_POS = (190, 513)
 
   def _update_ui(self,win,images):
     for img,pos in images:
@@ -114,6 +131,10 @@ class CarAI(Car):
     self.debug(win)
     win.blit(TOITURE, (0,0))
     win.blit(PLANTES, (0,0))
+    text = font.render("Score: " + str(self.score)+ " Time: "+str(self.time), True, BLANC)
+    win.blit(text, [0,0])
+    text = font.render("GARA DE CALAIS VILLE" , True, BLANC)
+    win.blit(text, [317, 440])
     pygame.display.update()
 
 
@@ -169,15 +190,22 @@ class CarAI(Car):
             pygame.quit()
             return 0, True, self.score  # Fin du jeu si la fenêtre est fermée
 
+
+    self.client.attach_to_car(FINISH_POSITION,self)  # Attache si proche
+    self.client.update_position(self)  # Suivre la voiture si collecté
+    self.client.detach_at_destination(FINISH_POSITION,self)  # Détache si à la destination
+    if self.client.depart == False and self.client.arrive == True:
+       self._place_client()
+       self.score +=1
+
     # Application de l'action de l'IA
     self.move_IA_Car(action)
 
     game_over = False
 
     if self.is_collision() != None:
-        self.score += 2/FPS
-        print(self.score,4*FPS)
-        if self.score >=4*FPS:
+        self.time += 2/FPS
+        if self.time >=4*FPS:
             game_over = True
         return game_over, self.score
      
@@ -185,7 +213,7 @@ class CarAI(Car):
     # Vérification de la ligne d'arrivée
     if self.game_finished():
         game_over = True
-        reward = 10
+
     
     self.clock.tick(FPS)
     return game_over, self.score
@@ -313,26 +341,23 @@ class CarAI(Car):
 
 def train():
     nbr_games = 0
-    game = CarAI(5,5)
+    game = CarAI(5, 5)
+
 
     while True:
-      #get action
-      state  = [game.get_state()]
-      index = loaded_model.predict(state)
-      move = index[0]
-      action = [0,0,0,0]
-      #move = random.randint(0,3)
-      action[move]=1
+        state = [game.get_state()]
+        index = loaded_model.predict(state)
+        move = index[0]
 
-      #preform move
-    
-      done, score = game.play_step(action)
+        action = [0, 0, 0, 0]
+        action[move] = 1
 
-      if done:
-        game.reset()
-        nbr_games +=1
-        print('Game:', nbr_games,'Score: ',score)
+        done, score = game.play_step(action)
 
+        if done:
+            game.reset()
+            nbr_games += 1
+            print('Game:', nbr_games, 'Score:', score)
 
-if __name__ == '__main__':
-  train()
+#if __name__ == '__main__':
+    #train()

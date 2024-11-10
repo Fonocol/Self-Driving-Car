@@ -1,5 +1,6 @@
 import pygame
 import time
+import random
 import math
 from utils import scale_img, blit_rotate_center
 import numpy as np
@@ -28,20 +29,22 @@ YELLOW = (255, 255, 0)
 BLANC =(255, 255, 255)
 
 FPS = 60
+HUMAIN_POSITION = [(475, 518), (585, 515), (700, 513), (797, 502), (823, 457), (828, 387), (778, 340), (778, 340), (692, 376), (605, 435), (532, 384), (543, 313), (540, 239), (559, 183), (616, 190), (640, 247), (688, 286), (753, 251), (811, 199), (832, 124), (818, 76), (761, 43), (705, 62), (662, 92), (610, 109), (568, 90), (531, 50), (476, 38), (447, 80), (379, 108), (435, 137), (445, 202), (468, 271), (474, 340), (440, 380), (367, 369), (326, 280), (300, 194), (309, 134), (326, 74), (306, 34), (213, 28), (107, 37), (53, 62), (53, 123), (65, 164), (133, 215), (203, 247), (253, 294), (283, 354), (277, 411), (217, 451), (176, 412), (144, 332), (99, 273), (51, 309), (50, 381), (53, 446), (82, 507), (189, 521)]
+COLLECTABLE_IMG = scale_img(pygame.image.load('./imgs/femme.png'), 0.08)
 
 # Initialisation de la collecte de données
 data_collection = []
 
 
-# Charger l'image de l'objet collectable
-COLLECTABLE_IMG = scale_img(pygame.image.load('./imgs/femme.png'), 0.08)
+
 
 
 class Collectable:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.attached = False  
+        self.depart = True
+        self.arrive = False   
 
     def draw(self, win):
         win.blit(COLLECTABLE_IMG, (int(self.x), int(self.y)))
@@ -50,17 +53,17 @@ class Collectable:
         distance = math.sqrt((self.x - car.x) ** 2 + (self.y - car.y) ** 2)
         distance_to_destination = math.sqrt((self.x - destination[0]) ** 2 + (self.y - destination[1]) ** 2)
         if distance < 20 and distance_to_destination>20:
-            self.attached = True
+            self.depart = False
 
     def update_position(self, car):
-        if self.attached:
+        if self.depart == False and self.arrive == False:
             self.x, self.y = car.x, car.y
 
     def detach_at_destination(self, destination,car):
         distance_to_destination = math.sqrt((self.x - destination[0]) ** 2 + (self.y - destination[1]) ** 2)
         distance = math.sqrt((self.x - car.x) ** 2 + (self.y - car.y) ** 2)
         if distance_to_destination < 20 and distance < 20: 
-            self.attached = False
+            self.arrive = True
 
 
 
@@ -74,6 +77,9 @@ class Car:
         self.rotation_vel = rotation_vel
         self.x, self.y = self.START_POS
         self.acceleration = 0.1
+        self.score = 0
+        self.client = None
+        self._place_client()
 
     def rotate(self, left=False, right=False):
         if left:
@@ -84,6 +90,8 @@ class Car:
     def draw(self, win):
         blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
         self.debug(win)
+        self.client.draw(win)
+        
 
     def move_forward(self):
         self.vel = min(self.vel + self.acceleration, self.max_vel)
@@ -128,6 +136,8 @@ class Car:
         self.x, self.y = self.START_POS
         self.angle = 0
         self.vel = 0
+        self.client = None
+        self._place_client()
 
     def debug(self,win):
       front_dist,p1 = self.get_distance_in_direction("front")
@@ -250,15 +260,30 @@ class Car:
       point = (x,y)
       return dist / max_distance,point
 
+
+
+    def _place_client(self):
+        i = random.randint(0, len(HUMAIN_POSITION)-1)
+        x,y = HUMAIN_POSITION[i]
+        self.client = Collectable(x, y)
+
+
+
+    
+
+
+
+
 class PlayerCar(Car):
     IMG = RED_CAR
     START_POS = (480, 514)
+
+    
 
 
 
 def collect_data(player_car, action):
     state = player_car.get_state()
-    print(state)
     front_dist, back_dist, left_dist, right_dist,left_font_dist,right_font_dist,left_back_dist,right__back_dist, angle, speed, collision, finish_dist = state
 
     data_collection.append({
@@ -297,6 +322,10 @@ def draw(win, images, player_car):
     player_car.draw(win)
     win.blit(TOITURE, (0,0))
     win.blit(PLANTES, (0,0))
+    text = font.render("Score: " + str(player_car.score), True, BLANC)
+    win.blit(text, [0,0])
+    text = font.render("GARA DE CALAIS VILLE" , True, BLANC)
+    win.blit(text, [317, 440])
     pygame.display.update()
 
 def move_player(player_car):
@@ -327,26 +356,6 @@ clock = pygame.time.Clock()
 images = [(TRACK, (0, 0)),(FINISH, FINISH_POSITION)] #,  (TRACK_BORDER, (0, 0))
 player_car = PlayerCar(4, 4)
 
-#while run:
-    #clock.tick(FPS)
-    #draw(WIN, images, player_car)
-    
-    #player_car.is_collision()
-    #action = move_player(player_car)
-    
-    #if action:
-        #print(player_car.x,player_car.y)
-        #collect_data(player_car, action)
-
-    #for event in pygame.event.get():
-        #if event.type == pygame.QUIT:
-            #run = False
-            #break
-
-#pygame.quit()
-
-
-collectable = Collectable(701, 325)  # Position initiale de l'objet 
 
 while run:
     clock.tick(FPS)
@@ -355,14 +364,16 @@ while run:
     draw(WIN, images, player_car)
     
     
-    collectable.draw(WIN)
-    collectable.attach_to_car(FINISH_POSITION,player_car)  # Attache si proche
-    collectable.update_position(player_car)  # Suivre la voiture si collecté
-    collectable.detach_at_destination(FINISH_POSITION,player_car)  # Détache si à la destination
+    player_car.client.attach_to_car(FINISH_POSITION,player_car)  # Attache si proche
+    player_car.client.update_position(player_car)  # Suivre la voiture si collecté
+    player_car.client.detach_at_destination(FINISH_POSITION,player_car)  # Détache si à la destination
+    if player_car.client.depart == False and player_car.client.arrive == True:
+       player_car._place_client()
+       player_car.score +=1
 
     # Gère les actions du joueur
     action = move_player(player_car)
-    print(player_car.x,player_car.y)
+    #print(player_car.x,player_car.y)
     if action:
         collect_data(player_car, action)
     
@@ -376,6 +387,6 @@ while run:
 
 pygame.quit()
 
-save = int(input("Save data? Entre 1: save = "))
-if save == 1:
-   save_data_to_csv()
+#save = int(input("Save data? Entre 1: save = "))
+#if save == 1:
+   #save_data_to_csv()
