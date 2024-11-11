@@ -27,6 +27,7 @@ RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0)
 BLANC =(255, 255, 255)
+GREEN = (0, 255, 0)
 
 FPS = 60
 HUMAIN_POSITION = [(475, 518), (585, 515), (700, 513), (797, 502), (823, 457), (828, 387), (778, 340), (778, 340), (692, 376), (605, 435), (532, 384), (543, 313), (540, 239), (559, 183), (616, 190), (640, 247), (688, 286), (753, 251), (811, 199), (832, 124), (818, 76), (761, 43), (705, 62), (662, 92), (610, 109), (568, 90), (531, 50), (476, 38), (447, 80), (379, 108), (435, 137), (445, 202), (468, 271), (474, 340), (440, 380), (367, 369), (326, 280), (300, 194), (309, 134), (326, 74), (306, 34), (213, 28), (107, 37), (53, 62), (53, 123), (65, 164), (133, 215), (203, 247), (253, 294), (283, 354), (277, 411), (217, 451), (176, 412), (144, 332), (99, 273), (51, 309), (50, 381), (53, 446), (82, 507), (189, 521)]
@@ -88,8 +89,10 @@ class Car:
             self.angle -= self.rotation_vel
 
     def draw(self, win):
-        blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
         self.debug(win)
+        pygame.draw.circle(win, BLANC, (self.client.x,self.client.y) , 20) #cercle client
+       
+        blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
         self.client.draw(win)
         
 
@@ -140,6 +143,16 @@ class Car:
         self._place_client()
 
     def debug(self,win):
+      angele_dis = self.radar()
+      index = 0
+      for dis_pos in angele_dis:
+        pygame.draw.circle(win, BLUE, dis_pos[1], 10)
+        pygame.draw.line(win, GREEN, dis_pos[1] , (self.x, self.y), 1)
+        text_f = font.render(str(index), True, BLANC)
+        win.blit(text_f, (dis_pos[1][0] - text_f.get_width() // 2, dis_pos[1][1] - text_f.get_height() // 2))
+        index += 1
+
+    def debug1(self,win):
       front_dist,p1 = self.get_distance_in_direction("front")
       back_dist,p2 = self.get_distance_in_direction("back")
       left_dist,p3 = self.get_distance_in_direction("left")
@@ -149,9 +162,11 @@ class Car:
       left_back_dist,p7 = self.get_distance_in_direction("left_back")
       right__back_dist,p8 = self.get_distance_in_direction("right__back")
 
+
       pygame.draw.circle(win, RED, p1, 10)
       text_f = font.render("F", True, BLANC)
       win.blit(text_f, (p1[0] - text_f.get_width() // 2, p1[1] - text_f.get_height() // 2))
+      pygame.draw.line(win, RED, p1 , (self.x, self.y), 1)
 
       pygame.draw.circle(win, RED, p2, 10)
       text_b = font.render("B", True, BLANC)
@@ -183,7 +198,7 @@ class Car:
 
       #line
       pygame.draw.line(win, RED, FINISH_POSITION , (self.x, self.y), 1)
-    
+      pygame.draw.circle(win, BLUE, FINISH_POSITION , 20)
 
 
     def get_state(self):
@@ -259,6 +274,32 @@ class Car:
       max_distance = np.sqrt(WIDTH**2 + HEIGHT**2)
       point = (x,y)
       return dist / max_distance,point
+
+
+    def radar(self):
+        radians = math.radians(self.angle)
+        angele_dis = []
+        max_distance = np.sqrt(WIDTH**2 + HEIGHT**2)
+        
+        for decalage in range(0, 360):  # Utilise les angles en radians
+            # Convertit le décalage en radians, chaque angle ayant une différence de 45° (pi/4 radians)
+            angle_offset = math.radians(decalage)
+            dx, dy = math.cos(radians + angle_offset), -math.sin(radians + angle_offset)
+            
+            # Initialisation des coordonnées de départ et distance
+            x, y, dist = self.x, self.y, 0
+            while 10 <= int(x) < WIDTH - 10 and 10 <= int(y) < HEIGHT - 10:
+                x += dx
+                y += dy
+                dist += 1
+                # Vérifie les collisions
+                if TRACK_BORDER_MASK.get_at((int(x), int(y))):
+                    break
+            
+            # Ajoute la distance normalisée et le point d'impact pour chaque direction
+            angele_dis.append((dist / max_distance, (x, y)))
+        
+        return angele_dis
 
 
 
